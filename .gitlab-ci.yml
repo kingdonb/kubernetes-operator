@@ -1,0 +1,6 @@
+rubygems:
+  script:
+    - gem build kubernetes-operator.gemspec
+  artifacts:
+    paths:
+      - kubernetes-operator*.gem
