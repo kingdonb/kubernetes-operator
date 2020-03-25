@@ -2,6 +2,7 @@ rubygems:
   script:
     - gem build kubernetes-operator.gemspec
     - mkdir ~/.gem
-    - echo ":rubygems_api_key:$RUBYGEMS_APIKEY" > ~/.gem/credentials
+    - export RUBYGEMS_APIKEY_WITH_SPACE=" $RUBYGEMS_APIKEY"
+    - echo ":rubygems_api_key:$RUBYGEMS_APIKEY_WITH_SPACE" > ~/.gem/credentials
     - chmod 0600 /root/.gem/credentials
     - gem push `ls -1 kubernetes-operator-*.gem`
