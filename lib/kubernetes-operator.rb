@@ -57,6 +57,10 @@ class KubernetesOperator
        @sleepTimer = nr
     end
 
+    def setScopeNamespaces(lst)
+        @lstOfNamespaces = lst
+    end
+
 
     # Controller
     def run
@@ -74,48 +78,49 @@ class KubernetesOperator
                 _uid = _i["metadata"]["uid"]
                 _v = _i["metadata"]["resourceVersion"]
 
-                _from_cache = @store.transaction{@store[_uid]}
+                if @lstOfNamespaces == nil || @lstOfNamespaces.contains(_i["metadata"]["namespace"])
+                    _from_cache = @store.transaction{@store[_uid]}
 
-                unless _from_cache
-                    # Add finalizer and refresh version number
-                    _i[:metadata][:finalizers] = ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]
-                    _i2 = @k8sclient.api(@crdGroup+"/"+@crdVersion).resource(@crdPlural).update_resource(_i)
-                    _v = _i2["metadata"]["resourceVersion"]
+                    unless _from_cache
+                        # Add finalizer and refresh version number
+                        _i[:metadata][:finalizers] = ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]
+                        _i2 = @k8sclient.api(@crdGroup+"/"+@crdVersion).resource(@crdPlural).update_resource(_i)
+                        _v = _i2["metadata"]["resourceVersion"]
 
-                    # Cache last version of ressources
-                    @store.transaction do
-                        @store[_uid] = _v
-                        @store.commit
-                    end
+                        # Cache last version of ressources
+                        @store.transaction do
+                            @store[_uid] = _v
+                            @store.commit
+                        end
 
-                    # call the action method
-                    _i["metadata"]["crd_status"] = "add"
-                    @addMethod.call(_i,@k8sclient)
-                else
-                    # only trigger action on change or delete event
-                    unless _from_cache == _v
-                        if _i["metadata"]["deletionTimestamp"]
-                            # remove finalizers
-                            _i[:metadata][:finalizers] = []
-                            @k8sclient.api(@crdGroup+"/"+@crdVersion).resource(@crdPlural).update_resource(_i)
+                        # call the action method
+                        _i["metadata"]["crd_status"] = "add"
+                        @addMethod.call(_i,@k8sclient)
+                    else
+                        # only trigger action on change or delete event
+                        unless _from_cache == _v
+                            if _i["metadata"]["deletionTimestamp"]
+                                # remove finalizers
+                                _i[:metadata][:finalizers] = []
+                                @k8sclient.api(@crdGroup+"/"+@crdVersion).resource(@crdPlural).update_resource(_i)
 
-                            # call the action method
-                            _i["metadata"]["crd_status"] = "delete"
-                            @deleteMethod.call(_i,@k8sclient)
-                        else
-                            # store new version in cache
-                            @store.transaction do
-                                @store[_uid] = _v
-                                @store.commit
+                                # call the action method
+                                _i["metadata"]["crd_status"] = "delete"
+                                @deleteMethod.call(_i,@k8sclient)
+                            else
+                                # store new version in cache
+                                @store.transaction do
+                                    @store[_uid] = _v
+                                    @store.commit
+                                end
+
+                                # call the action method
+                                _i["metadata"]["crd_status"] = "update"
+                                @updateMethod.call(_i,@k8sclient)
                             end
-
-                            # call the action method
-                            _i["metadata"]["crd_status"] = "update"
-                            @updateMethod.call(_i,@k8sclient)
                         end
                     end
                 end
-
             end
 
             # Done
