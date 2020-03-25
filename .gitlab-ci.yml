@@ -1,5 +1,6 @@
 rubygems:
   script:
     - gem build kubernetes-operator.gemspec
+    - mkdir ~/.gem
     - echo ":rubygems_api_key:$RUBYGEMS_APIKEY" > ~/.gem/credentials
     - gem push `ls -1 kubernetes-operator-*.gem`
