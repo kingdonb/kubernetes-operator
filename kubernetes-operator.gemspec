@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
     s.name	= 'kubernetes-operator'
-    s.version	= '0.0.1'
+    s.version	= '0.0.2'
     s.platform    = Gem::Platform::RUBY
     s.summary	= "lib"
     s.description	= "Libary to create an kubernetes operator with ruby"
