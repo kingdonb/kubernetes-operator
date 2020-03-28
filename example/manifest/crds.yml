@@ -1,0 +1,23 @@
+---
+apiVersion: "apiextensions.k8s.io/v1beta1"
+kind: "CustomResourceDefinition"
+metadata:
+  name: "fancy-ruby-samples.example.com"
+spec:
+  group: "example.com"
+  version: "v1alpha1"
+  scope: "Cluster"
+  names:
+    plural: "fancy-ruby-samples"
+    singular: "fancy-ruby-sample"
+    kind: "FancyRubySample"
+  validation:
+    openAPIV3Schema:
+      required: ["spec"]
+      properties:
+        spec:
+          required: ["sampleName"]
+          properties:
+            sampleName:
+              type: "string"
+              minimum: 1
