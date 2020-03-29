@@ -23,3 +23,9 @@ spec:
             sampleName:
               type: "string"
               minimum: 1
+        status:
+          type: object
+          properties:
+            message:
+              type: "string"
+              minimum: 1

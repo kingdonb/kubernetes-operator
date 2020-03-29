@@ -8,6 +8,7 @@ crdPlural = "fancy-ruby-samples"
 
 def upsert(obj,k8sclient)
     @logger.info("create new fancy sample with the name #{obj["spec"]["sampleName"]}")
+    {:status => {:message => "upsert works fine"}}
 end
 
 def delete(obj,k8sclient)

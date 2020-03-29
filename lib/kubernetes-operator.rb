@@ -122,7 +122,11 @@ class KubernetesOperator
                                 patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]}},'merge-patch',@options[:namespace])
                                 # trigger action
                                 @logger.info("trigger add action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                @addMethod.call(notice[:object],@k8sclient)
+                                resp = @addMethod.call(notice[:object],@k8sclient)
+                                # update status
+                                if resp[:status]
+                                    @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
+                                end
                                 # save version
                                 @store.transaction do
                                     @store[patched[:metadata][:uid]] = patched[:metadata][:resourceVersion]
@@ -139,7 +143,11 @@ class KubernetesOperator
                                 unless notice[:object][:metadata][:deletionTimestamp]
                                     # trigger action
                                     @logger.info("trigger update action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                    @updateMethod.call(notice[:object],@k8sclient)
+                                    resp = @updateMethod.call(notice[:object],@k8sclient)
+                                    # update status
+                                    if resp[:status]
+                                        @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
+                                    end
                                     # save version
                                     @store.transaction do
                                         @store[notice[:object][:metadata][:uid]] = notice[:object][:metadata][:resourceVersion]

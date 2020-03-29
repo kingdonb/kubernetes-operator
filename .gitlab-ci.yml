@@ -6,3 +6,7 @@ rubygems:
     - echo ":rubygems_api_key:$RUBYGEMS_APIKEY_WITH_SPACE" > ~/.gem/credentials
     - chmod 0600 /root/.gem/credentials
     - gem push `ls -1 kubernetes-operator-*.gem`
+  only:
+    changes:
+      - lib/kubernetes-operator.rb
+      - kubernetes-operator.gemspec
