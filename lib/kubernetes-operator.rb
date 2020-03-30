@@ -13,6 +13,90 @@ require 'log_formatter'
 require 'log_formatter/log4r_json_formatter'
 require 'json'
 
+class EventHelper
+
+    def initialize(logger,store)
+        # logging
+        @logger = logger
+        @store = store
+
+        # kubeconfig
+        # we need our own client because its an different api path
+        # (for local development it's nice to use .kube/config)
+        if File.exist?("#{Dir.home}/.kube/config")
+            config = Kubeclient::Config.read(ENV['KUBECONFIG'] || "#{ENV['HOME']}/.kube/config")
+            context = config.context
+            @k8sclient = Kubeclient::Client.new(
+                context.api_endpoint,
+                'v1',
+                ssl_options: context.ssl_options,
+                auth_options: context.auth_options
+            )
+        else
+            auth_options = {
+                bearer_token_file: '/var/run/secrets/kubernetes.io/serviceaccount/token'
+            }
+            ssl_options = {}
+            if File.exist?("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+                ssl_options[:ca_file] = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            end
+            @k8sclient = Kubeclient::Client.new(
+                'https://kubernetes.default.svc',
+                'v1',
+                auth_options: auth_options,
+                ssl_options:  ssl_options
+            )
+        end
+    end
+
+    def add(obj,message,reason = "Upsert",type = "Normal", component = "KubernetesOperator")
+        begin
+            event = Kubeclient::Resource.new
+            time = Time.new.utc
+
+            _tmpNS = obj[:metadata][:namespace]
+
+            event.firstTimestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+            event.lastTimestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+            event.involvedObject = {}
+            event.involvedObject.apiVersion = obj[:apiVersion]
+            event.involvedObject.kind = obj[:kind]
+            event.involvedObject.name = obj[:metadata][:name]
+            event.involvedObject.namespace = obj[:metadata][:namespace]
+            event.involvedObject.resourceVersion = obj[:metadata][:resourceVersion]
+            event.involvedObject.uid = obj[:metadata][:uid]
+            event.kind = "Event"
+            event.message = message
+            event.metadata = {}
+            event.metadata.name = "#{obj[:metadata][:name]}.#{time.to_i}"
+            event.metadata.namespace = obj[:metadata][:namespace] ||= "default"
+            event.reason = reason
+            event.source = {}
+            event.source.component = component
+            event.type = type
+
+            @k8sclient.create_event(event)
+
+            @logger.info("add event #{message}(#{type}) to #{obj[:metadata][:name]}(#{obj[:metadata][:uid]})")
+        rescue => exception
+            @logger.error(exception.inspect)
+        end
+
+    end
+
+    def deleteAll(obj)
+        begin
+            events = @k8sclient.get_events(namespace: obj[:metadata][:namespace],field_selector: "involvedObject.uid=#{obj[:metadata][:uid]}")
+            events.each do |event|
+                @logger.info("delete event #{event[:metadata][:name]}(#{event[:metadata][:namespace]}) from #{obj[:metadata][:name]}(#{obj[:metadata][:uid]})")
+                @k8sclient.delete_event(event[:metadata][:name],event[:metadata][:namespace])
+            end
+        rescue => exception
+            @logger.error(exception.inspect)
+        end
+    end
+end
+
 class KubernetesOperator
 
     def initialize(crdGroup, crdVersion, crdPlural, options = {} )
@@ -67,6 +151,9 @@ class KubernetesOperator
                 ssl_options:  ssl_options
             )
         end
+
+        # event helper
+        @eventHelper = EventHelper.new(@logger,@store)
     end
 
     # Action Methods
@@ -87,14 +174,17 @@ class KubernetesOperator
         @deleteMethod = callback
     end
 
-    # Logger Methods
+    # Helper Methods
     def getLogger()
         return @logger
     end
 
+    def getEventHelper()
+        return @eventHelper
+    end
+
     # Controller
     def run
-
         @logger.info("start the operator")
         # load methods
         @addMethod = method(:defaultActionMethod) unless @addMethod
@@ -117,9 +207,6 @@ class KubernetesOperator
                         when "ADDED"
                             # check if version is already processed
                             unless isCached
-                                # add finalizer
-                                @logger.info("add finalizer to #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]}},'merge-patch',@options[:namespace])
                                 # trigger action
                                 @logger.info("trigger add action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
                                 resp = @addMethod.call(notice[:object],@k8sclient)
@@ -127,6 +214,9 @@ class KubernetesOperator
                                 if resp[:status]
                                     @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
                                 end
+                                # add finalizer
+                                @logger.info("add finalizer to #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
+                                patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]}},'merge-patch',@options[:namespace])
                                 # save version
                                 @store.transaction do
                                     @store[patched[:metadata][:uid]] = patched[:metadata][:resourceVersion]
@@ -138,7 +228,7 @@ class KubernetesOperator
                         # cr was change or deleted (if finalizer is set, it an modified call, not an delete)
                         when "MODIFIED"
                             # check if version is already processed
-                            if isCached != notice[:object][:metadata][:resourceVersion]
+                            if isCached.to_i < notice[:object][:metadata][:resourceVersion].to_i
                                 # check if it's an delete event
                                 unless notice[:object][:metadata][:deletionTimestamp]
                                     # trigger action
@@ -165,7 +255,8 @@ class KubernetesOperator
                                 @logger.info("skip update action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}), found version in cache")
                             end
                         when "DELETED"
-                            @logger.info("#{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}) is done")
+                            @logger.info("#{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}) is done, clean up events")
+                            @eventHelper.deleteAll(notice[:object])
                         else
                             @logger.info("strange things are going on here, I found the type "+notice[:type])
                         end
@@ -174,68 +265,6 @@ class KubernetesOperator
                     end
                 end
                 watcher.finish
-
-                ## Search for ressources
-                #_ressources = @k8sclient.get(@crdGroup+"/"+@crdVersion).resource(@crdPlural).list()
-
-                #_ressources.each do |_i|
-                #    _uid = _i["metadata"]["uid"]
-                #    _v = _i["metadata"]["resourceVersion"]
-
-                #    if @options[:namespace] == nil || @options[:namespace].contains(_i["metadata"]["namespace"])
-                #        _from_cache = @store.transaction{@store[_uid]}
-
-                #        unless _from_cache
-                #            # Add finalizer and refresh version number
-                #            _i[:metadata][:finalizers] = ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]
-                #            _i = @k8sclient.api(@crdGroup+"/"+@crdVersion).resource(@crdPlural).update_resource(_i)
-
-                #            # call the action method
-                #            _i["metadata"]["crd_status"] = "add"
-                #            @logger.info("add custom resource #{_i["metadata"]["name"]}@#{_i["metadata"]["namespace"]}") if _i["metadata"]["namespace"]
-                #            @logger.info("add custom resource #{_i["metadata"]["name"]}@cluster") unless _i["metadata"]["namespace"]
-                #            @addMethod.call(_i,@k8sclient)
-
-                #            # update status
-                #            _i[:status] = {message: "Test"}
-                #            _i = @k8sclient.api(@crdGroup+"/"+@crdVersion).resource(@crdPlural).update_resource(_i)
-
-                #            # Cache last version of ressources
-                #            @store.transaction do
-                #                @store[_uid] = _i["metadata"]["resourceVersion"]
-                #                @store.commit
-                #            end
-
-                #        else
-                #            # only trigger action on change or delete event
-                #            unless _from_cache == _v
-                #                if _i["metadata"]["deletionTimestamp"]
-                #                    # remove finalizers
-                #                    _i[:metadata][:finalizers] = []
-                #                    @k8sclient.api(@crdGroup+"/"+@crdVersion).resource(@crdPlural).update_resource(_i)
-
-                #                    # call the action method
-                #                    _i["metadata"]["crd_status"] = "delete"
-                #                    @logger.info("delete custom resource #{_i["metadata"]["name"]}@#{_i["metadata"]["namespace"]}") if _i["metadata"]["namespace"]
-                #                    @logger.info("delete custom resource #{_i["metadata"]["name"]}@cluster") unless _i["metadata"]["namespace"]
-                #                    @deleteMethod.call(_i,@k8sclient)
-                #                else
-                #                    # store new version in cache
-                #                    @store.transaction do
-                #                        @store[_uid] = _v
-                #                        @store.commit
-                #                    end
-
-                #                    # call the action method
-                #                    _i["metadata"]["crd_status"] = "update"
-                #                    @logger.info("update custom resource #{_i["metadata"]["name"]}@#{_i["metadata"]["namespace"]}") if _i["metadata"]["namespace"]
-                #                    @logger.info("update custom resource #{_i["metadata"]["name"]}@cluster") unless _i["metadata"]["namespace"]
-                #                    @updateMethod.call(_i,@k8sclient)
-                #                end
-                #            end
-                #        end
-                #    end
-                #end
 
             rescue => exception
                 @logger.error(exception.inspect)

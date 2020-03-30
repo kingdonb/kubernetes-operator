@@ -8,6 +8,7 @@ crdPlural = "fancy-ruby-samples"
 
 def upsert(obj,k8sclient)
     @logger.info("create new fancy sample with the name #{obj["spec"]["sampleName"]}")
+    @eventHelper.add(obj,"fancy sample event")
     {:status => {:message => "upsert works fine"}}
 end
 
@@ -16,7 +17,8 @@ def delete(obj,k8sclient)
 end
 
 opi = KubernetesOperator.new(crdGroup,crdVersion,crdPlural)
+@logger = opi.getLogger()
+@eventHelper = opi.getEventHelper()
 opi.setUpsertMethod(method(:upsert))
 opi.setDeleteMethod(method(:delete))
-@logger = opi.getLogger()
 opi.run()
