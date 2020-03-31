@@ -1,13 +1,13 @@
 # Ruby Kubernetes Operator
-If you do not want to create your operators for kubernetes in golang, it is difficult to find good frameworks. This gem is used to implement a few basic functions and to quickly create your own operators based on ruby. It is not a framework, so the YAML CRDs still have to be created by hand.<br>
+If you do not want to create your operators for kubernetes in golang, it is difficult to find good frameworks. This gem is used to implement a few basic functions andand helps eucht with a quick entry into the world of operators. Unlike the operator-sdk in golang, the gem does not offer yaml generators. You would have to create the crds.yml yourself.<br>
 
 ## Current features
 
-- Basic: Watch changes of customresources and trigger upsert (add, update) or delete methods
-- Stores resource version in yaml store to avoid double events
-- Handle the finalizer on create and after delete
-- Update status after successfuly passed upsert methods
-- Provides an event handler, so you can easy create events for your cr. On deletion it also will clean up all lost events.
+- Basic: Watch changes of custom resources and trigger upsert (add, update) or delete methods.
+- Cache resource version in yaml store to avoid double events.
+- Handle the finalizer on create and after delete events.
+- Update status after successfuly passed upsert methods.
+- Provides an event handler, so you can easy create events forcustom resources. On deletion it also will clean up all lost events.
 
 ![KubernetesOperator.png](KubernetesOperator.png)
 
@@ -24,8 +24,10 @@ gem 'kubernetes-operator'
 
 ## Usage
 An full example you will found in [./example](./example), also you can check our [yard](https://tobiaskuntzsch.gitlab.io/kubernetes-operator/) documentation.
+
 ### Watch events
 The simplest start is an operator who only listens to the upsert events and writes the status in a logfile.
+
 ```
 crdGroup = "exmaple.com"
 crdVersion = "v1alpha1"
@@ -39,7 +41,9 @@ opi = KubernetesOperator.new(crdGroup,crdVersion,crdPlural)
 opi.setUpsertMethod(method(:my_custom_action))
 opi.run()
 ```
+
 You can also add an delete methode.
+
 ```
 ...
 
@@ -53,7 +57,7 @@ opi.setDeleteMethod(method(:my_custom_action_fordelete))
 opi.run()
 ```
 ### Return status subressources
-If you have activated the subresource status in your crd, you can return a status `[:status]` object.<br>
+If you have activated the subresource status in your crd, you can return a status `[:status]` object.<br><br>
 Example resource definition:
 ```
 spec:
