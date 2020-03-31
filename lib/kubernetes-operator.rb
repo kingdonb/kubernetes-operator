@@ -15,10 +15,12 @@ require 'json'
 
 class EventHelper
 
-    def initialize(logger,store)
+    # EventHelper initialize provides an helper class to add and delete events from ressources
+    # @see https://www.bluematador.com/blog/kubernetes-events-explained Documentation
+    # @param logger [Log4r::Logger] Logger for this class
+    def initialize(logger)
         # logging
         @logger = logger
-        @store = store
 
         # kubeconfig
         # we need our own client because its an different api path
@@ -49,6 +51,12 @@ class EventHelper
         end
     end
 
+    # Add an event
+    # @param obj [Hash] Kubernetes custom resource object as hash (required)
+    # @param message [string] Event message (required)
+    # @param reason [string] Event reason (default: "Upsert")
+    # @param type [string] Event type (default: "Normal")
+    # @param component [string] Event component (default: "KubernetesOperator")
     def add(obj,message,reason = "Upsert",type = "Normal", component = "KubernetesOperator")
         begin
             event = Kubeclient::Resource.new
@@ -84,6 +92,8 @@ class EventHelper
 
     end
 
+    # Delete all events from an cr
+    # @param obj [Hash] Kubernetes custom resource object as hash (required)
     def deleteAll(obj)
         begin
             events = @k8sclient.get_events(namespace: obj[:metadata][:namespace],field_selector: "involvedObject.uid=#{obj[:metadata][:uid]}")
@@ -99,6 +109,15 @@ end
 
 class KubernetesOperator
 
+    # Operator Class to run the core operator functions for your crd
+    # @see https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definition-versioning/ Documentation
+    # @param group [string] Group from crd
+    # @param version [string] Api Version from crd
+    # @param plural [string] Name (plural) from crd
+    # @param options [Hash] Additional options
+    # @option options [Hash] sleepTimer Time to wait for retry if the watch event stops
+    # @option options [Hash] namespace Watch only an namespace, default watch all namespaces
+    # @option options [Hash] persistence_location Location for the yaml store, default is /tmp/persistence
     def initialize(crdGroup, crdVersion, crdPlural, options = {} )
         # parameter
         @crdGroup = crdGroup
@@ -153,37 +172,52 @@ class KubernetesOperator
         end
 
         # event helper
-        @eventHelper = EventHelper.new(@logger,@store)
+        @eventHelper = EventHelper.new(@logger)
     end
 
     # Action Methods
+
+    # Set the method that was triggert then an add cr event occurred
+    # @param callback [methode] Ruby methode
     def setAddMethod(callback)
         @addMethod = callback
     end
 
+    # Set the method that was triggert then an update cr event occurred
+    # @param callback [methode] Ruby methode
     def setUpdateMethod(callback)
         @updateMethod = callback
     end
 
+    # Set the method that was triggert then an add or update cr event occurred
+    # This function overwrite setAddMethod and setUpdateMethod
+    # @param callback [methode] Ruby methode
     def setUpsertMethod(callback)
         @updateMethod = callback
         @addMethod = callback
     end
 
+    # Set the method that was triggert then an delete cr event occurred
+    # @param callback [methode] Ruby methode
     def setDeleteMethod(callback)
         @deleteMethod = callback
     end
 
     # Helper Methods
+
+    # get the logger from the operatore framework
+    # @return [Log4r::Logger] logger
     def getLogger()
         return @logger
     end
 
+    # get the event helper from the operatore framework
+    # @return [EventHelper] event helper
     def getEventHelper()
         return @eventHelper
     end
 
-    # Controller
+    # start the operator to watch your cr
     def run
         @logger.info("start the operator")
         # load methods
@@ -192,7 +226,6 @@ class KubernetesOperator
         @deleteMethod = method(:defaultActionMethod) unless @deleteMethod
 
         while true
-
             begin
                 if @options[:namespace]
                     watcher = @k8sclient.watch_entities(@crdPlural,@options[:namespace])
@@ -255,33 +288,32 @@ class KubernetesOperator
                                 @logger.info("skip update action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}), found version in cache")
                             end
                         when "DELETED"
+                            # clear events, if delete was successfuly
                             @logger.info("#{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}) is done, clean up events")
                             @eventHelper.deleteAll(notice[:object])
                         else
+                            # upsi, something wrong
                             @logger.info("strange things are going on here, I found the type "+notice[:type])
                         end
                     rescue => exception
                         @logger.error(exception.inspect)
                     end
                 end
+                # watcher is done, lost connection ...
                 watcher.finish
-
             rescue => exception
                 @logger.error(exception.inspect)
             end
 
-            # Done
+            # done
             sleep @options[:sleepTimer]
 
         end
     end
 
+    # default methode, only an esay print command
     private
         def defaultActionMethod(obj,k8sclient)
             puts "{leve: \"info\", action: \"#{obj["metadata"]["crd_status"]}\", ressource: \"#{obj["metadata"]["namespace"]}/#{obj["metadata"]["name"]}\"}"
         end
 end
-
-
-
-

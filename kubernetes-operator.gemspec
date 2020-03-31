@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
     s.author	= "Tobias Kuntzsch"
     s.email	= "mail@tobiaskuntzsch.de"
     s.homepage	= "https://gitlab.com/tobiaskuntzsch/kubernetes-operator"
-    s.files	=  Dir['README.md', '{bin,lib,config,vendor}/**/*'] # 'VERSION', 'Gemfile', 'Rakefile', 
+    s.files	=  Dir['README.md', '{bin,lib,config,vendor}/**/*']
     s.require_path = 'lib'
 
     s.add_dependency('kubeclient')

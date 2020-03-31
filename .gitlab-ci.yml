@@ -1,4 +1,9 @@
+stages:
+  - release
+  - documentation
+
 rubygems:
+  stage: release
   script:
     - gem build kubernetes-operator.gemspec
     - mkdir ~/.gem
@@ -10,3 +15,19 @@ rubygems:
     changes:
       - lib/kubernetes-operator.rb
       - kubernetes-operator.gemspec
+
+pages:
+  stage: documentation
+  tags:
+    - iat
+    - k8s
+    - sparkleformation
+  script:
+    - gem build kubernetes-operator.gemspec
+    - gem install yard
+    - yard doc --files `ls -1 | grep .gem | grep -v .gemspec`
+    - rm -rf public
+    - mv doc public
+  artifacts:
+    paths:
+    - public
