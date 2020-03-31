@@ -24,6 +24,7 @@ pages:
     - yard doc --files `ls -1 | grep .gem | grep -v .gemspec`
     - rm -rf public
     - mv doc public
+    - cp *.png public/
   artifacts:
     paths:
     - public
