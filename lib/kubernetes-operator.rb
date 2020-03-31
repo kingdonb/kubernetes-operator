@@ -242,7 +242,7 @@ class KubernetesOperator
                             unless isCached
                                 # trigger action
                                 @logger.info("trigger add action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                resp = @addMethod.call(notice[:object],@k8sclient)
+                                resp = @addMethod.call(notice[:object])
                                 # update status
                                 if resp[:status]
                                     @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
@@ -266,7 +266,7 @@ class KubernetesOperator
                                 unless notice[:object][:metadata][:deletionTimestamp]
                                     # trigger action
                                     @logger.info("trigger update action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                    resp = @updateMethod.call(notice[:object],@k8sclient)
+                                    resp = @updateMethod.call(notice[:object])
                                     # update status
                                     if resp[:status]
                                         @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
@@ -279,7 +279,7 @@ class KubernetesOperator
                                 else
                                     # trigger action
                                     @logger.info("trigger delete action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                    @updateMethod.call(notice[:object],@k8sclient)
+                                    @deleteMethod.call(notice[:object])
                                     # remove finalizer
                                     @logger.info("remove finalizer to #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
                                     patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: nil}},'merge-patch',@options[:namespace])
@@ -313,7 +313,7 @@ class KubernetesOperator
 
     # default methode, only an esay print command
     private
-        def defaultActionMethod(obj,k8sclient)
+        def defaultActionMethod(obj)
             puts "{leve: \"info\", action: \"#{obj["metadata"]["crd_status"]}\", ressource: \"#{obj["metadata"]["namespace"]}/#{obj["metadata"]["name"]}\"}"
         end
 end

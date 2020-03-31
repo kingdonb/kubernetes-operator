@@ -33,7 +33,7 @@ crdGroup = "exmaple.com"
 crdVersion = "v1alpha1"
 crdPlural = "myres"
 
-def my_custom_action(obj,k8sclient)
+def my_custom_action(obj)
     puts "Do some cool stuff for #{obj["metadata"]["crd_status"]} action of #{obj["metadata"]["name"]}"
 end
 
@@ -47,7 +47,7 @@ You can also add an delete methode.
 ```
 ...
 
-def my_custom_action_fordelete(obj,k8sclient)
+def my_custom_action_fordelete(obj)
     puts "Delete #{obj["metadata"]["crd_status"]} action of #{obj["metadata"]["name"]}"
 end
 
@@ -78,7 +78,7 @@ spec:
 ```
 Example upsert method:
 ```
-def upsert(obj,k8sclient)
+def upsert(obj)
     {:status => {:message => "upsert works fine"}}
 end
 ```
