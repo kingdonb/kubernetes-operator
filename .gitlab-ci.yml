@@ -18,10 +18,6 @@ rubygems:
 
 pages:
   stage: documentation
-  tags:
-    - iat
-    - k8s
-    - sparkleformation
   script:
     - gem build kubernetes-operator.gemspec
     - gem install yard
