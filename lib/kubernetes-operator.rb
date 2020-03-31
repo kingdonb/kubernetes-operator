@@ -244,7 +244,7 @@ class KubernetesOperator
                                 @logger.info("trigger add action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
                                 resp = @addMethod.call(notice[:object])
                                 # update status
-                                if resp[:status]
+                                if resp.is_a?(Hash) && resp[:status]
                                     @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
                                 end
                                 # add finalizer
