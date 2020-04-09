@@ -1,0 +1,7 @@
+---
+kind: FancyRubyNsSample
+apiVersion: example.com/v1alpha1
+metadata:
+  name: "my-sample"
+spec:
+  sampleName: "my-sample"

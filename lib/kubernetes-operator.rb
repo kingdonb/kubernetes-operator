@@ -117,6 +117,7 @@ class KubernetesOperator
     # @param options [Hash] Additional options
     # @option options [Hash] sleepTimer Time to wait for retry if the watch event stops
     # @option options [Hash] namespace Watch only an namespace, default watch all namespaces
+    # @option options [Hash] showSkipEvents Log an message on each event from kubernetes watch api
     # @option options [Hash] persistence_location Location for the yaml store, default is /tmp/persistence
     def initialize(crdGroup, crdVersion, crdPlural, options = {} )
         # parameter
@@ -128,6 +129,7 @@ class KubernetesOperator
         @options = options
         @options[:sleepTimer] ||= 10
         @options[:namespace] ||= nil
+        @options[:showSkipEvents] ||= false
 
         # create persistence
         @options[:persistence_location] ||= "/tmp/persistence"
@@ -234,6 +236,7 @@ class KubernetesOperator
                 end
                 watcher.each do |notice|
                     begin
+                        @objOrgNamespace = notice[:object][:metadata][:namespace]
                         isCached = @store.transaction{@store[notice[:object][:metadata][:uid]]}
                         case notice[:type]
                         # new cr was added
@@ -245,18 +248,20 @@ class KubernetesOperator
                                 resp = @addMethod.call(notice[:object])
                                 # update status
                                 if resp.is_a?(Hash) && resp[:status]
-                                    @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
+                                    @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@objOrgNamespace)
                                 end
                                 # add finalizer
                                 @logger.info("add finalizer to #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]}},'merge-patch',@options[:namespace])
+                                patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: ["#{@crdPlural}.#{@crdVersion}.#{@crdGroup}"]}},'merge-patch',@objOrgNamespace)
                                 # save version
                                 @store.transaction do
                                     @store[patched[:metadata][:uid]] = patched[:metadata][:resourceVersion]
                                     @store.commit
                                 end
                             else
-                                @logger.info("skip add action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}), found version in cache")
+                                if @options[:showSkipEvents]
+                                    @logger.info("skip add action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}), found version in cache")
+                                end
                             end
                         # cr was change or deleted (if finalizer is set, it an modified call, not an delete)
                         when "MODIFIED"
@@ -269,7 +274,7 @@ class KubernetesOperator
                                     resp = @updateMethod.call(notice[:object])
                                     # update status
                                     if resp[:status]
-                                        @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@options[:namespace])
+                                        @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name]+"/status", {status: resp[:status]},'merge-patch',@objOrgNamespace)
                                     end
                                     # save version
                                     @store.transaction do
@@ -282,10 +287,12 @@ class KubernetesOperator
                                     @deleteMethod.call(notice[:object])
                                     # remove finalizer
                                     @logger.info("remove finalizer to #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]})")
-                                    patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: nil}},'merge-patch',@options[:namespace])
+                                    patched = @k8sclient.patch_entity(@crdPlural,notice[:object][:metadata][:name], {metadata: {finalizers: nil}},'merge-patch',@objOrgNamespace)
                                 end
                             else
-                                @logger.info("skip update action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}), found version in cache")
+                                if @options[:showSkipEvents]
+                                    @logger.info("skip update action for #{notice[:object][:metadata][:name]} (#{notice[:object][:metadata][:uid]}), found version in cache")
+                                end
                             end
                         when "DELETED"
                             # clear events, if delete was successfuly
