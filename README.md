@@ -29,7 +29,7 @@ An full example you will found in [./example](./example), also you can check our
 The simplest start is an operator who only listens to the upsert events and writes the status in a logfile.
 
 ```
-crdGroup = "exmaple.com"
+crdGroup = "example.com"
 crdVersion = "v1alpha1"
 crdPlural = "myres"
 
