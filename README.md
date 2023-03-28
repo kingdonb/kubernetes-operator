@@ -56,7 +56,7 @@ end
 opi.setDeleteMethod(method(:my_custom_action_fordelete))
 opi.run()
 ```
-### Return status subressources
+### Return status subresources
 If you have activated the subresource status in your crd, you can return a status `[:status]` object.<br><br>
 Example resource definition:
 ```
