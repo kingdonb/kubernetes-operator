@@ -2,6 +2,8 @@
 source "https://rubygems.org"
 
 # Use local repo for gem tests
-gem 'kubernetes-operator', :path => '../'
+#gem 'kubernetes-operator', :path => '../'
 
-
+source "https://rubygems.pkg.github.com/kingdonb" do
+  gem "kubernetes-operator", "0.1.4"
+end

@@ -1,11 +1,3 @@
-PATH
-  remote: ..
-  specs:
-    kubernetes-operator (0.1.3)
-      kubeclient
-      log4r
-      log_formatter
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -55,11 +47,19 @@ GEM
       unf_ext
     unf_ext (0.0.8.2)
 
+GEM
+  remote: https://rubygems.pkg.github.com/kingdonb/
+  specs:
+    kubernetes-operator (0.1.4)
+      kubeclient
+      log4r
+      log_formatter
+
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  kubernetes-operator!
+  kubernetes-operator (= 0.1.4)!
 
 BUNDLED WITH
    2.4.10
