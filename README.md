@@ -1,5 +1,5 @@
 # Ruby Kubernetes Operator
-If you do not want to create your operators for kubernetes in golang, it is difficult to find good frameworks. This gem is used to implement a few basic functions andand helps eucht with a quick entry into the world of operators. Unlike the operator-sdk in golang, the gem does not offer yaml generators. You would have to create the crds.yml yourself.<br>
+If you do not want to create your operators for kubernetes in golang, it is difficult to find good frameworks. This gem is used to implement a few basic functions and helps out with a quick entry into the world of operators. Unlike the operator-sdk in golang, the gem does not offer yaml generators. You would have to create the crds.yml yourself.<br>
 
 ## Current features
 
@@ -12,14 +12,15 @@ If you do not want to create your operators for kubernetes in golang, it is diff
 ![KubernetesOperator.png](KubernetesOperator.png)
 
 ## Installation
-The gem is hosted on [rubygems.org](https://rubygems.org/gems/kubernetes-operator), so you can install it with ...
+The gem is re-hosted on [rubygems.pkg.github.com/kingdonb](https://rubygems.pkg.github.com/kingdonb), so you can install it with ...
 ```
-gem install kubernetes-operator
+gem install kubernetes-operator --version "0.1.4"
 ```
 ... or with bundler in your Gemfile.
 ```
-source 'https://rubygems.org'
-gem 'kubernetes-operator'
+source "https://rubygems.pkg.github.com/kingdonb" do
+  gem "kubernetes-operator", "0.1.4"
+end
 ```
 
 ## Usage
