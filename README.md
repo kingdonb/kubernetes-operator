@@ -7,7 +7,8 @@ If you do not want to create your operators for kubernetes in golang, it is diff
 - Cache resource version in yaml store to avoid double events.
 - Handle the finalizer on create and after delete events.
 - Update status after successfuly passed upsert methods.
-- Provides an event handler, so you can easy create events forcustom resources. On deletion it also will clean up all lost events.
+- Provides an event handler, so you can easy create events for
+  custom resources. On deletion it also will clean up all lost events.
 
 ![KubernetesOperator.png](KubernetesOperator.png)
 
@@ -24,7 +25,7 @@ end
 ```
 
 ## Usage
-An full example you will found in [./example](./example), also you can check our [yard](https://tobiaskuntzsch.gitlab.io/kubernetes-operator/) documentation.
+A full example you will find in [./example](./example), also you can check our [yard](https://tobiaskuntzsch.gitlab.io/kubernetes-operator/) documentation.
 
 ### Watch events
 The simplest start is an operator who only listens to the upsert events and writes the status in a logfile.
