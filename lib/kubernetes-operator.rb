@@ -133,7 +133,7 @@ class KubernetesOperator
 
         # create persistence
         @options[:persistence_location] ||= "/tmp/persistence"
-        Dir.mkdir(@options[:persistence_location]) unless File.exists?(@options[:persistence_location])
+        Dir.mkdir(@options[:persistence_location]) unless File.exist?(@options[:persistence_location])
         @store = YAML::Store.new("#{@options[:persistence_location]}/#{@crdGroup}_#{@crdVersion}_#{@crdPlural}.yaml")
 
         # logging
