@@ -5,5 +5,5 @@ source "https://rubygems.org"
 # gem 'kubernetes-operator', :path => '../'
 
 source "https://rubygems.pkg.github.com/kingdonb" do
-  gem "kubernetes-operator", "0.1.4"
+  gem "kubernetes-operator", "0.1.5"
 end

@@ -50,7 +50,7 @@ GEM
 GEM
   remote: https://rubygems.pkg.github.com/kingdonb/
   specs:
-    kubernetes-operator (0.1.4)
+    kubernetes-operator (0.1.5)
       kubeclient
       log4r
       log_formatter
@@ -59,7 +59,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  kubernetes-operator (= 0.1.4)!
+  kubernetes-operator (= 0.1.5)!
 
 BUNDLED WITH
    2.4.10
