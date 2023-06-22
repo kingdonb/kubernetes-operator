@@ -140,7 +140,7 @@ class KubernetesOperator
         @logger = Log4r::Logger.new('Log4RTest')
         outputter = Log4r::StdoutOutputter.new(
             "console",
-            :formatter => Log4r::JSONFormatter::Base.new("#{crdPlural}.#{@crdGroup}/#{@crdVersion}")
+            :formatter => Log4r::JSONFormatter::Base.new("#{@crdPlural}.#{@crdGroup}/#{@crdVersion}")
         )
         @logger.add(outputter)
 
