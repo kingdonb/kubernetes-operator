@@ -1,7 +1,7 @@
 ---
-kind: FancyRubyNsSample
+kind: Project
 apiVersion: example.com/v1alpha1
 metadata:
-  name: "my-sample"
+  name: "fluxcd"
 spec:
-  sampleName: "my-sample"
+  projectName: "fluxcd"

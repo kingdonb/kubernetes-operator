@@ -5,7 +5,7 @@ require 'kubernetes-operator'
 crdGroup = "example.com"
 crdVersion = "v1alpha1"
 #crdPlural = "fancy-ruby-samples"
-crdPlural = "fancy-ruby-ns-samples"
+crdPlural = "projects"
 
 def upsert(obj)
     @logger.info("create new fancy sample with the name #{obj["spec"]["sampleName"]}")
